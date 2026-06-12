@@ -108,182 +108,19 @@ function createAvatarSvg(name, bgColor) {
   `;
 }
 
-// --- CLOUD SYNCHRONIZATION CONFIG & HELPERS ---
-const SYNC_CONFIG = {
-  enabled: true,
-  bucketId: '6Nk5a3pDfpbHHtpxnKWEGY',
-  key: 'cotask_tasks',
-  pollIntervalMs: 15000 // Poll every 15 seconds
-};
-
-let isUploading = false;
-let isFetching = false;
-
-function updateSyncStatus(status, textOverride = '') {
-  const indicator = document.getElementById('sync-indicator');
-  if (!indicator) return;
-
-  indicator.className = `sync-badge ${status}`;
-  const textEl = indicator.querySelector('.sync-text');
-  if (textEl) {
-    if (textOverride) {
-      textEl.textContent = textOverride;
-    } else {
-      switch (status) {
-        case 'local':
-          textEl.textContent = 'Local Mode';
-          break;
-        case 'syncing':
-          textEl.textContent = 'Syncing...';
-          break;
-        case 'synced':
-          textEl.textContent = 'Synced';
-          break;
-        case 'error':
-          textEl.textContent = 'Sync Error';
-          break;
-      }
-    }
-  }
-}
-
-async function uploadStateToCloud(timestamp = Date.now()) {
-  if (!SYNC_CONFIG.enabled) return;
-  
-  updateSyncStatus('syncing');
-  isUploading = true;
-  
-  try {
-    const response = await fetch(`https://kvdb.io/${SYNC_CONFIG.bucketId}/${SYNC_CONFIG.key}`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify({
-        tasks: state.tasks,
-        updatedAt: timestamp
-      })
-    });
-    
-    if (!response.ok) {
-      throw new Error(`HTTP error! status: ${response.status}`);
-    }
-    
-    updateSyncStatus('synced');
-  } catch (error) {
-    console.error('Cloud save failed:', error);
-    updateSyncStatus('error');
-  } finally {
-    isUploading = false;
-  }
-}
-
-async function fetchStateFromCloud(localUpdatedAt = 0, forceRender = false) {
-  if (!SYNC_CONFIG.enabled || isUploading || isFetching) return;
-  
-  isFetching = true;
-  updateSyncStatus('syncing');
-  
-  try {
-    const response = await fetch(`https://kvdb.io/${SYNC_CONFIG.bucketId}/${SYNC_CONFIG.key}`);
-    
-    if (response.status === 404) {
-      console.log('No remote tasks found. Uploading initial local tasks...');
-      isFetching = false;
-      await uploadStateToCloud(localUpdatedAt || Date.now());
-      return;
-    }
-    
-    if (!response.ok) {
-      throw new Error(`HTTP error! status: ${response.status}`);
-    }
-    
-    const cloudData = await response.json();
-    const cloudTasks = cloudData.tasks || [];
-    const cloudUpdatedAt = cloudData.updatedAt || 0;
-    
-    // Check if cloud data has changed or is newer
-    const tasksChanged = JSON.stringify(state.tasks) !== JSON.stringify(cloudTasks);
-    
-    if (tasksChanged && (cloudUpdatedAt > localUpdatedAt || forceRender)) {
-      console.log('Remote tasks are newer or forced. Updating local state.');
-      state.tasks = cloudTasks.map(task => {
-        if (!task.startDate) {
-          task.startDate = formatDate(new Date(task.createdAt || Date.now()));
-        }
-        if (!task.endDate) {
-          task.endDate = formatDate(new Date((task.createdAt || Date.now()) + 86400000 * 3));
-        }
-        return task;
-      });
-      
-      // Update local storage to keep in sync
-      localStorage.setItem('cotask_app_state_v3', JSON.stringify({
-        tasks: state.tasks,
-        selectedMemberId: state.selectedMemberId,
-        currentView: state.currentView,
-        updatedAt: cloudUpdatedAt
-      }));
-      
-      // Refresh current view
-      if (state.currentView === 'manager') {
-        renderManagerDashboard();
-      } else {
-        renderTeamMemberView();
-      }
-    }
-    
-    updateSyncStatus('synced');
-  } catch (error) {
-    console.error('Cloud load failed:', error);
-    updateSyncStatus('error');
-  } finally {
-    isFetching = false;
-  }
-}
-
-function setupSyncButton() {
-  const syncBtn = document.getElementById('sync-indicator');
-  if (syncBtn) {
-    syncBtn.addEventListener('click', () => {
-      fetchStateFromCloud(0, true);
-    });
-  }
-}
-
-function startPolling() {
-  setInterval(() => {
-    const stored = localStorage.getItem('cotask_app_state_v3');
-    let localUpdatedAt = 0;
-    if (stored) {
-      try {
-        const parsed = JSON.parse(stored);
-        localUpdatedAt = parsed.updatedAt || 0;
-      } catch (e) {}
-    }
-    fetchStateFromCloud(localUpdatedAt);
-  }, SYNC_CONFIG.pollIntervalMs);
-}
-
 /**
  * Local Storage Operations
  */
 function saveState() {
-  const now = Date.now();
   localStorage.setItem('cotask_app_state_v3', JSON.stringify({
     tasks: state.tasks,
     selectedMemberId: state.selectedMemberId,
-    currentView: state.currentView,
-    updatedAt: now
+    currentView: state.currentView
   }));
-  
-  uploadStateToCloud(now);
 }
 
 function loadState() {
   const stored = localStorage.getItem('cotask_app_state_v3');
-  let localUpdatedAt = 0;
-  
   if (stored) {
     try {
       const parsed = JSON.parse(stored);
@@ -298,7 +135,6 @@ function loadState() {
       });
       state.selectedMemberId = parsed.selectedMemberId || 'member-1';
       state.currentView = parsed.currentView || 'manager';
-      localUpdatedAt = parsed.updatedAt || 0;
     } catch (e) {
       console.error('Failed to parse local storage, loading default data', e);
       state.tasks = [...DEFAULT_TASKS];
@@ -307,11 +143,7 @@ function loadState() {
     state.tasks = [...DEFAULT_TASKS];
     saveState();
   }
-  
-  // Asynchronously trigger cloud load
-  fetchStateFromCloud(localUpdatedAt);
 }
-
 
 // --- DOM ELEMENTS REFERENCE ---
 const btnManagerView = document.getElementById('btn-manager-view');
@@ -416,8 +248,6 @@ function initApp() {
   setupFormListener();
   setupDragAndDrop();
   setDefaultFormDates();
-  setupSyncButton();
-  startPolling();
   
   // Render based on initial state
   renderView(state.currentView);
