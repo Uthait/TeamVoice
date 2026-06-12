@@ -1,0 +1,304 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Co-Task // Collaborative Team To-Do List</title>
+  <meta name="description" content="A glassmorphism-styled collaborative task manager featuring a Lead Manager Dashboard and a personalized Team Member Kanban board with drag-and-drop actions.">
+  <link rel="stylesheet" href="style.css?v=1.0.1">
+</head>
+<body>
+
+  <!-- Ambient Animated Glass Blobs -->
+  <div class="bg-blobs" aria-hidden="true">
+    <div class="blob blob-1"></div>
+    <div class="blob blob-2"></div>
+    <div class="blob blob-3"></div>
+  </div>
+
+  <div class="app-container">
+    
+    <!-- Main Application Header -->
+    <header class="glass-card" id="app-header">
+      <div class="brand">
+        <div class="brand-icon" aria-hidden="true">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"></path>
+            <rect x="8" y="2" width="8" height="4" rx="1" ry="1"></rect>
+            <path d="m9 14 2 2 4-4"></path>
+          </svg>
+        </div>
+        <div>
+          <div style="display: flex; align-items: baseline; gap: 10px;">
+            <h1>Co-Task</h1>
+            <span id="sync-indicator" class="sync-badge local" title="Click to sync tasks now" role="button" tabindex="0">
+              <span class="sync-dot"></span>
+              <span class="sync-text">Local Mode</span>
+            </span>
+          </div>
+          <p>Collaborative Team Hub</p>
+        </div>
+      </div>
+      
+      <!-- View Switcher -->
+      <div class="view-switcher" id="view-switcher" role="tablist">
+        <button class="switch-btn active" id="btn-manager-view" role="tab" aria-selected="true" aria-controls="manager-view">
+          <svg viewBox="0 0 24 24">
+            <path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-7 2c1.66 0 3 1.34 3 3s-1.34 3-3 3-3-1.34-3-3 1.34-3 3-3zm6 12H6v-.75c0-1.99 4-3.05 6-3.05s6 1.06 6 3.05V17z"/>
+          </svg>
+          Manager View
+        </button>
+        <button class="switch-btn" id="btn-member-view" role="tab" aria-selected="false" aria-controls="member-view">
+          <svg viewBox="0 0 24 24">
+            <path d="M4 14h6v-6H4v6zm0 7h6v-6H4v6zm7-7h6v-6h-6v6zm0 7h6v-6h-6v6zM4 4v2h16V4H4z"/>
+          </svg>
+          Team Kanban
+        </button>
+      </div>
+    </header>
+
+    <!-- ==================== MANAGER VIEW ==================== -->
+    <main class="view-section active" id="manager-view" role="tabpanel" aria-labelledby="btn-manager-view">
+      <div class="dashboard-grid">
+        
+        <!-- Left Side: Statistics & Task Table -->
+        <div class="dashboard-main">
+          
+          <!-- Metrics Cards Row -->
+          <div class="metrics-row" id="metrics-summary">
+            <!-- Total Tasks Card -->
+            <div class="glass-card metric-card" id="metric-total-tasks">
+              <div class="metric-icon blue" aria-hidden="true">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <path d="M12 20h9M3 20v-8c0-2.2 1.8-4 4-4h10c2.2 0 4 1.8 4 4v8M3 12h18M12 3v5"></path>
+                </svg>
+              </div>
+              <div class="metric-info">
+                <h3>Total Tasks</h3>
+                <p id="stat-total">0</p>
+              </div>
+            </div>
+            
+            <!-- High Priority Tasks Card -->
+            <div class="glass-card metric-card" id="metric-high-priority">
+              <div class="metric-icon orange" aria-hidden="true">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"></path>
+                  <line x1="12" y1="9" x2="12" y2="13"></line>
+                  <line x1="12" y1="17" x2="12.01" y2="17"></line>
+                </svg>
+              </div>
+              <div class="metric-info">
+                <h3>High Priority</h3>
+                <p id="stat-high">0</p>
+              </div>
+            </div>
+            
+            <!-- Completion Progress Card -->
+            <div class="glass-card metric-card" id="metric-completion">
+              <div class="metric-icon green" aria-hidden="true">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path>
+                  <polyline points="22 4 12 14.01 9 11.01"></polyline>
+                </svg>
+              </div>
+              <div class="metric-info">
+                <h3>Completion Rate</h3>
+                <p id="stat-completion">0%</p>
+              </div>
+            </div>
+          </div>
+
+          <!-- Overall Task Distribution (SVG Circular Chart) -->
+          <div class="glass-card chart-container" id="dashboard-charts">
+            <div class="chart-header">
+              <h2>Team Progress Chart</h2>
+              <span id="chart-sub" style="font-size: 0.85rem; color: var(--text-muted);">Completion breakdown</span>
+            </div>
+            <div class="chart-wrapper">
+              <div style="position: relative; display: flex; align-items: center; justify-content: center;">
+                <svg class="donut-chart-svg" viewBox="0 0 42 42">
+                  <circle class="donut-circle-bg" cx="21" cy="21" r="15.91549430918954" aria-hidden="true"></circle>
+                  <circle class="donut-circle-value" id="donut-segment" cx="21" cy="21" r="15.91549430918954" stroke-dasharray="0 100" stroke-dashoffset="0" aria-hidden="true"></circle>
+                </svg>
+                <div id="chart-percentage-text" style="position: absolute; font-size: 1.25rem; font-weight: 700;">0%</div>
+              </div>
+              <div class="chart-legend" id="chart-legend-list">
+                <!-- Dynamically loaded status items -->
+                <div class="legend-item">
+                  <div class="legend-label">
+                    <div class="legend-color" style="background: #64748b;"></div>
+                    <span>To Do</span>
+                  </div>
+                  <span class="legend-value" id="legend-todo-val">0</span>
+                </div>
+                <div class="legend-item">
+                  <div class="legend-label">
+                    <div class="legend-color" style="background: #3b82f6;"></div>
+                    <span>In Progress</span>
+                  </div>
+                  <span class="legend-value" id="legend-progress-val">0</span>
+                </div>
+                <div class="legend-item">
+                  <div class="legend-label">
+                    <div class="legend-color" style="background: #10b981;"></div>
+                    <span>Done</span>
+                  </div>
+                  <span class="legend-value" id="legend-done-val">0</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- All Tasks List / Table -->
+          <div class="glass-card task-table-card" id="all-tasks-card">
+            <div class="task-table-header">
+              <h2>Master Task List</h2>
+              <p id="table-total-count" style="font-size: 0.875rem; color: var(--text-muted);">0 tasks total</p>
+            </div>
+            <div class="task-table-wrapper">
+              <table class="task-table" id="master-task-table">
+                <thead>
+                  <tr>
+                    <th>Task Details</th>
+                    <th>Assignee</th>
+                    <th>Timeline</th>
+                    <th>Priority</th>
+                    <th>Status</th>
+                    <th>Actions</th>
+                  </tr>
+                </thead>
+                <tbody id="task-table-body">
+                  <!-- Dynamically populated rows -->
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+        </div>
+
+        <!-- Right Side: Assign Task Form -->
+        <aside class="glass-card assign-form" id="assign-task-panel">
+          <h2>Assign New Task</h2>
+          <form id="new-task-form" novalidate>
+            <div class="form-group">
+              <label for="task-title">Task Title</label>
+              <input type="text" id="task-title" class="form-input" placeholder="e.g., Design UI mockups" required>
+            </div>
+            
+            <div class="form-group">
+              <label for="task-desc">Description</label>
+              <textarea id="task-desc" class="form-textarea" rows="3" placeholder="Briefly describe what needs to be done..."></textarea>
+            </div>
+
+            <div class="form-row">
+              <div class="form-group">
+                <label for="task-priority">Priority</label>
+                <select id="task-priority" class="form-select">
+                  <option value="Low">Low 🟢</option>
+                  <option value="Medium" selected>Medium 🟡</option>
+                  <option value="High">High 🔴</option>
+                </select>
+              </div>
+              
+              <div class="form-group">
+                <label for="task-assignee">Assignee</label>
+                <select id="task-assignee" class="form-select" required>
+                  <!-- Dynamically loaded from team profiles -->
+                </select>
+              </div>
+            </div>
+
+            <div class="form-row">
+              <div class="form-group">
+                <label for="task-start-date">Start Date</label>
+                <input type="date" id="task-start-date" class="form-input" required>
+              </div>
+              
+              <div class="form-group">
+                <label for="task-end-date">End Date</label>
+                <input type="date" id="task-end-date" class="form-input" required>
+              </div>
+            </div>
+
+            <button type="submit" class="btn-primary" id="btn-submit-task">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <line x1="12" y1="5" x2="12" y2="19"></line>
+                <line x1="5" y1="12" x2="19" y2="12"></line>
+              </svg>
+              Assign Task
+            </button>
+          </form>
+        </aside>
+
+      </div>
+    </main>
+
+    <!-- ==================== TEAM MEMBER VIEW ==================== -->
+    <section class="view-section" id="member-view" role="tabpanel" aria-labelledby="btn-member-view">
+      <div style="display: flex; flex-direction: column; gap: 2rem;">
+        
+        <!-- Filter Tabs for Team Members -->
+        <div class="glass-card profiles-filter-container" id="profile-filters-card">
+          <div class="profiles-title">Select Team Member Profile</div>
+          <div class="profiles-row" id="profiles-tabs-row" role="tablist">
+            <!-- Dynamically populated profile items -->
+          </div>
+        </div>
+
+        <!-- Kanban Board Area -->
+        <div class="kanban-board" id="kanban-board-container">
+          
+          <!-- Column: To Do -->
+          <div class="kanban-column" id="col-todo">
+            <div class="column-header">
+              <div class="column-title">
+                <span class="column-indicator todo" aria-hidden="true"></span>
+                <span>To Do</span>
+              </div>
+              <span class="column-count" id="count-todo">0</span>
+            </div>
+            <div class="cards-container" id="container-todo" data-status="todo" role="list">
+              <!-- Cards dynamically inserted -->
+            </div>
+          </div>
+
+          <!-- Column: In Progress -->
+          <div class="kanban-column" id="col-progress">
+            <div class="column-header">
+              <div class="column-title">
+                <span class="column-indicator progress" aria-hidden="true"></span>
+                <span>In Progress</span>
+              </div>
+              <span class="column-count" id="count-progress">0</span>
+            </div>
+            <div class="cards-container" id="container-progress" data-status="progress" role="list">
+              <!-- Cards dynamically inserted -->
+            </div>
+          </div>
+
+          <!-- Column: Done -->
+          <div class="kanban-column" id="col-done">
+            <div class="column-header">
+              <div class="column-title">
+                <span class="column-indicator done" aria-hidden="true"></span>
+                <span>Done</span>
+              </div>
+              <span class="column-count" id="count-done">0</span>
+            </div>
+            <div class="cards-container" id="container-done" data-status="done" role="list">
+              <!-- Cards dynamically inserted -->
+            </div>
+          </div>
+
+        </div>
+
+      </div>
+    </section>
+
+  </div>
+
+  <!-- Main JavaScript File -->
+  <script src="app.js?v=1.0.1" defer></script>
+</body>
+</html>
